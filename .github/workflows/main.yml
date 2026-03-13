@@ -6,7 +6,7 @@ on:
       agent_name:
         description: 'Nama Agen'
         required: true
-        default: 'dongcobadulu'
+        default: 'dongcobadulu' # Ganti jika nama file .json kamu bukan ini
       agent_description:
         description: 'Deskripsi Agen'
         required: true
@@ -18,24 +18,36 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Update ke v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # Update ke v4
         with:
           node-version: '20'
 
-      - name: Step 1 - Install ClawHub skill
+      - name: Install ClawHub skill
         run: npx clawhub@latest install verified-agent-identity
 
-      - name: Install script dependencies
+      - name: Check Scripts Directory
         run: |
-          cd scripts
-          npm install
+          if [ -d "scripts" ]; then
+            cd scripts && npm install
+          else
+            echo "Folder scripts tidak ditemukan, mencoba menjalankan langsung..."
+          fi
 
       - name: Step 2 - Create new Ethereum Identity
-        run: node scripts/createNewEthereumIdentity.js
+        run: |
+          if [ -f "scripts/createNewEthereumIdentity.js" ]; then
+            node scripts/createNewEthereumIdentity.js
+          else
+            npx verified-agent-identity create-identity
+          fi
 
       - name: Step 3 - Link Human to Agent
         run: |
-          node scripts/manualLinkHumanToAgent.js --challenge '{"name": "dongcobadulu", "description": "AI Agent"}'
+          if [ -f "scripts/manualLinkHumanToAgent.js" ]; then
+            node scripts/manualLinkHumanToAgent.js --challenge '{"name": "${{ github.event.inputs.agent_name }}", "description": "${{ github.event.inputs.agent_description }}"}'
+          else
+            npx verified-agent-identity link --name "${{ github.event.inputs.agent_name }}" --desc "${{ github.event.inputs.agent_description }}"
+          fi
